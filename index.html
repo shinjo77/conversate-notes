@@ -25,6 +25,7 @@
   header { position: sticky; top: 0; z-index: 2; background: var(--brand); color: #fff; padding: calc(12px + env(safe-area-inset-top)) 16px 12px; box-shadow: 0 2px 12px rgb(0 0 0 / .18); }
   header > div { max-width: 696px; margin: 0 auto; }
   h1 { font-size: 19px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; letter-spacing: -.01em; }
+  h1 small { font-size: 12px; font-weight: 400; opacity: .7; align-self: flex-end; padding-bottom: 3px; }
   h1 img { width: 28px; height: 28px; border-radius: 8px; }
   header label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   header select { width: 100%; background: rgb(255 255 255 / .14); border-color: rgb(255 255 255 / .25); color: #fff; font-weight: 600; }
@@ -86,7 +87,7 @@
 <body>
 <header>
   <div>
-    <h1><img src="icon.svg" alt="">대화 노트</h1>
+    <h1><img src="icon.svg" alt="">대화 노트 <small id="ver"></small></h1>
     <label for="group">그룹</label>
     <select id="group"></select>
     <div class="row">
@@ -163,6 +164,9 @@ import { parseExport, prepNotes, condensePrompt, LIMIT } from './parse.js'
 const $ = (id) => document.getElementById(id)
 const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2) // not crypto.randomUUID: that needs https, and LAN testing is http
+const VERSION = '1.2' // shown beside the title; bump on every release so the phone shows which build it runs
+$('ver').textContent = `v${VERSION}`
+
 let hide
 const say = (s) => { $('msg').textContent = s; clearTimeout(hide); hide = setTimeout(() => { $('msg').textContent = '' }, 5000) }
 
@@ -231,11 +235,15 @@ function render() {
   updateCount()
 }
 
-function add(text) {
+function add(text, shared = false) {
   if (!text.trim()) return
   const g = group()
   const s = { id: uid(), ...parseExport(text) }
-  if (g.sessions.some((x) => x.title === s.title && x.date === s.date) && !confirm(`"${s.title}" (${s.date}) 대화가 이미 있습니다. 그래도 추가할까요?`)) return
+  if (g.sessions.some((x) => x.title === s.title && x.date === s.date)) {
+    // a share arrives while the page is still loading, where browsers can cancel confirm() without showing it: say why instead of asking
+    if (shared) return say(`"${s.title}" (${s.date}) 대화는 이미 "${g.name}"에 있어서 추가하지 않았습니다.`)
+    if (!confirm(`"${s.title}" (${s.date}) 대화가 이미 있습니다. 그래도 추가할까요?`)) return
+  }
   g.sessions.push(s)
   save(); render(); say(`"${s.title}" 대화를 "${g.name}"에 추가했습니다.`)
 }
@@ -353,14 +361,30 @@ if (!matchMedia('(display-mode: standalone)').matches && !navigator.standalone) 
   addEventListener('appinstalled', () => { $('installCard').hidden = true })
 }
 // Conversations shared from another app's share sheet: sw.js parked them in the cache (see its share handler).
-if (window.caches) {
-  const parked = new URL('shared', location.href).href
-  const hit = await caches.match(parked)
-  if (hit) {
-    await (await caches.open('cn-v1')).delete(parked) // before adding, so a reload never imports it twice
-    for (const text of await hit.json()) add(text)
-  }
+let taking = false
+async function takeShared() {
+  if (!window.caches || taking) return
+  taking = true
+  try {
+    const parked = new URL('shared', location.href).href
+    const hit = await caches.match(parked)
+    if (hit) {
+      await (await caches.open('cn-v1')).delete(parked) // before adding, so a reload never imports it twice
+      const texts = await hit.json()
+      if (!texts.some((t) => t.trim())) say('공유받은 내용이 비어 있습니다. 텍스트 파일이나 글자만 받을 수 있습니다.')
+      for (const text of texts) {
+        // the share target accepts any file type; PDFs, Word files etc. decode to NULs and replacement characters
+        if (text.includes('\0') || (text.match(/\uFFFD/g)?.length ?? 0) > 5) say('공유받은 파일이 텍스트 파일이 아니라서 추가하지 않았습니다.')
+        else add(text, true)
+      }
+    }
+  } catch (e) { say(`공유받은 내용을 읽지 못했습니다: ${e.message}`) }
+  taking = false
 }
+takeShared()
+// also when the app comes back to the front without reloading (it was already open when the share arrived)
+addEventListener('pageshow', takeShared)
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') takeShared() })
 // offline use; only registers on https or localhost
 navigator.serviceWorker?.register('sw.js').catch((e) => console.warn('offline cache unavailable', e))
 </script>

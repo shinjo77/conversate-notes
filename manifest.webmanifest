@@ -40,9 +40,7 @@
         {
           "name": "files",
           "accept": [
-            "text/plain",
-            "text/*",
-            ".txt"
+            "*/*"
           ]
         }
       ]

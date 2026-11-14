@@ -14,7 +14,11 @@ self.addEventListener('fetch', (e) => {
       const texts = await Promise.all(form.getAll('files').map((f) => f.text()))
       const typed = [form.get('title'), form.get('text')].filter(Boolean).join('\n') // shared as plain text instead of a file
       if (!texts.length && typed) texts.push(typed)
-      await (await caches.open(CACHE)).put(new URL('shared', self.location).href, new Response(JSON.stringify(texts)))
+      // append: several shares can arrive before the app gets to read them
+      const cache = await caches.open(CACHE)
+      const key = new URL('shared', self.location).href
+      const waiting = (await (await cache.match(key))?.json()) ?? []
+      await cache.put(key, new Response(JSON.stringify([...waiting, ...texts])))
       return Response.redirect(new URL('./', self.location).href, 303)
     })())
     return
