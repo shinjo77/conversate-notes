@@ -1,0 +1,18 @@
+const CACHE = 'cn-v1'
+const FILES = ['./', './parse.js', './manifest.webmanifest', './icon.svg', './icon.png', './icon-192.png']
+
+self.addEventListener('install', (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())))
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()))
+
+// Network first, so an updated page shows up on the next open without cache versioning; the cache answers when offline.
+self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET' || !e.request.url.startsWith(self.location.origin)) return
+  // no-cache = always revalidate with the server: the browser's HTTP cache otherwise pairs a new index.html with an old parse.js, and the page dies on a missing import
+  e.respondWith(fetch(e.request.url, { cache: 'no-cache' }).then(
+    (r) => {
+      if (r.ok) { const copy = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)) }
+      return r
+    },
+    () => caches.match(e.request, { ignoreSearch: true }),
+  ))
+})

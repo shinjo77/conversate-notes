@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#14532d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.png">
+<title>대화 노트</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --brand: #14532d;
+    --bg: #f2f6f3; --card: #ffffff; --field: #f7faf8; --text: #14201a; --muted: #5d6b63; --line: #dde5df;
+    --accent: #166534; --on-accent: #ffffff; --soft: #dcfce7; --danger: #b91c1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b120e; --card: #141d17; --field: #0f1712; --text: #e7efe9; --muted: #9aa9a0; --line: #26342a;
+      --accent: #4ade80; --on-accent: #052e16; --soft: #153420; --danger: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { font: 16px/1.55 system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; margin: 0; background: var(--bg); color: var(--text); -webkit-text-size-adjust: 100%; }
+  main { max-width: 720px; margin: 0 auto; padding: 4px 12px calc(96px + env(safe-area-inset-bottom)); }
+
+  header { position: sticky; top: 0; z-index: 2; background: var(--brand); color: #fff; padding: calc(12px + env(safe-area-inset-top)) 16px 12px; box-shadow: 0 2px 12px rgb(0 0 0 / .18); }
+  header > div { max-width: 696px; margin: 0 auto; }
+  h1 { font-size: 19px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; letter-spacing: -.01em; }
+  h1 img { width: 28px; height: 28px; border-radius: 8px; }
+  header label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  header select { width: 100%; background: rgb(255 255 255 / .14); border-color: rgb(255 255 255 / .25); color: #fff; font-weight: 600; }
+  header select option { color: #111; }
+  header .row { margin: 8px 0 0; }
+  header button { background: transparent; color: #d1fae5; min-height: 36px; padding: 4px 10px; font-size: 14px; }
+  header button.danger { color: #fecaca; margin-left: auto; }
+
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; margin: 12px 0; }
+  h2 { font-size: 17px; margin: 0 0 12px; letter-spacing: -.01em; }
+
+  /* 16px inputs: iOS zooms the page on anything smaller */
+  button, select, input, textarea { font: inherit; min-height: 46px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--field); color: inherit; }
+  textarea { width: 100%; display: block; field-sizing: content; max-height: 60vh; line-height: 1.5; }
+  :is(button, select, input, textarea, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  header :focus-visible { outline-color: #fff; }
+
+  button { border: 0; background: var(--soft); color: var(--accent); font-weight: 600; cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--on-accent); }
+  button.danger { background: transparent; color: var(--danger); }
+  button:disabled { opacity: .55; }
+  button:active { filter: brightness(.94); }
+
+  input[type=file] { width: 100%; border-style: dashed; padding: 8px; color: var(--muted); font-size: 14px; }
+  input[type=file]::file-selector-button { font: inherit; font-weight: 600; border: 0; border-radius: 9px; padding: 8px 12px; margin-right: 10px; background: var(--soft); color: var(--accent); }
+  #key { width: 100%; }
+  #recent { width: 76px; text-align: center; }
+
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+  .row.fill > button { flex: 1 1 0; }
+  .row.fill > #ai { flex-basis: 100%; } /* its label wraps when sharing a phone-width row */
+  .field, details label { display: block; margin: 14px 0 6px; font-size: 14px; color: var(--muted); font-weight: 500; }
+  .field:first-of-type { margin-top: 0; }
+  .muted { color: var(--muted); font-size: 14px; margin: 6px 0; }
+
+  /* part pickers as chips; the checkbox stays in the DOM for keyboard and screen readers */
+  #partNames label { display: inline-flex; align-items: center; min-height: 40px; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; cursor: pointer; }
+  #partNames input { position: absolute; opacity: 0; width: 1px; min-height: 0; }
+  #partNames label:has(input:checked) { background: var(--soft); border-color: transparent; color: var(--accent); font-weight: 600; }
+  #partNames label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  #count { text-align: right; font-variant-numeric: tabular-nums; }
+  #count.danger { color: var(--danger); font-weight: 600; }
+
+  details { background: var(--field); border: 1px solid var(--line); border-radius: 14px; margin: 8px 0; padding: 0 14px; }
+  summary { display: flex; align-items: center; gap: 8px; padding: 14px 0; cursor: pointer; font-weight: 600; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: ""; margin-left: auto; flex: none; width: 9px; height: 9px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .15s; }
+  details[open] summary::after { transform: rotate(-135deg); }
+  details[open] { padding-bottom: 6px; }
+  details label > :is(input, textarea) { display: block; width: 100%; margin-top: 6px; background: var(--card); color: var(--text); font-weight: 400; }
+
+  /* status messages float above the content so they are seen wherever the page is scrolled */
+  #msg { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 3; margin: 0; max-width: min(92vw, 560px); padding: 12px 18px; border-radius: 14px; background: var(--text); color: var(--bg); font-size: 14px; box-shadow: 0 6px 24px rgb(0 0 0 / .25); }
+  #msg:empty { display: none; }
+  @media (prefers-reduced-motion: reduce) { summary::after { transition: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1><img src="icon.svg" alt="">대화 노트</h1>
+    <label for="group">그룹</label>
+    <select id="group"></select>
+    <div class="row">
+      <button id="newGroup">+ 새 그룹</button>
+      <button id="renameGroup">이름 변경</button>
+      <button id="delGroup" class="danger">그룹 삭제</button>
+    </div>
+  </div>
+</header>
+<p id="msg" role="status"></p>
+
+<main>
+<section id="installCard" hidden>
+  <h2>앱으로 설치</h2>
+  <p class="muted" id="installHint"></p>
+  <div class="row fill"><button id="install" class="primary" hidden>홈 화면에 설치</button></div>
+</section>
+
+<section>
+  <h2>대화 추가</h2>
+  <label class="field" for="files">Conversate에서 내보낸 파일 (여러 개 선택 가능)</label>
+  <input type="file" id="files" multiple accept=".txt,text/plain">
+  <label class="field" for="paste">또는 내용 붙여넣기</label>
+  <textarea id="paste" rows="3"></textarea>
+  <div class="row fill"><button id="addPaste">붙여넣은 내용 추가</button></div>
+</section>
+
+<section>
+  <h2>준비 메모 만들기</h2>
+  <div class="row">
+    <label for="recent">최근</label><input type="number" id="recent" min="1" value="5" inputmode="numeric"><span>회 대화에서</span>
+  </div>
+  <div class="row" id="partNames" role="group" aria-label="포함할 부분"></div>
+  <div class="row fill">
+    <button id="ai" class="primary">AI로 5,000자에 맞춰 정리</button>
+    <button id="plain">그대로 합치기</button>
+  </div>
+  <label class="field" for="prep">준비 메모 (직접 고칠 수 있음)</label>
+  <textarea id="prep" rows="8"></textarea>
+  <p class="muted" id="count" aria-live="polite"></p>
+  <div class="row fill">
+    <button id="share" class="primary">공유</button>
+    <button id="copy">복사</button>
+    <button id="download">파일 저장</button>
+  </div>
+</section>
+
+<section>
+  <h2>대화 기록</h2>
+  <div id="sessions"></div>
+</section>
+
+<section>
+  <h2>설정</h2>
+  <label class="field" for="key">Gemini API 키 (AI 정리에 필요, 이 기기에만 저장)</label>
+  <input type="password" id="key" autocomplete="off">
+  <p class="muted">AI 정리를 누르면 선택한 대화 내용이 Google Gemini로 전송됩니다.</p>
+</section>
+
+<section>
+  <h2>백업</h2>
+  <p class="muted">기록은 이 기기의 브라우저에만 저장됩니다. 가끔 백업 파일을 받아두세요.</p>
+  <div class="row fill">
+    <button id="backup">백업 파일 저장</button>
+    <button id="restoreBtn">백업 불러오기</button>
+    <input type="file" id="restore" accept=".json,application/json" hidden>
+  </div>
+</section>
+</main>
+
+<script type="module">
+import { parseExport, prepNotes, condensePrompt, LIMIT } from './parse.js'
+
+const $ = (id) => document.getElementById(id)
+const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e }
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2) // not crypto.randomUUID: that needs https, and LAN testing is http
+let hide
+const say = (s) => { $('msg').textContent = s; clearTimeout(hide); hide = setTimeout(() => { $('msg').textContent = '' }, 5000) }
+
+// shortcut: localStorage holds about 5MB (roughly 200 conversations with transcripts); move to IndexedDB when saving starts failing.
+let db = { groups: [], current: '' }
+let loaded = true
+try { db = JSON.parse(localStorage.getItem('cn')) ?? db } catch (e) { loaded = false; say(`저장된 기록을 읽지 못했습니다: ${e.message}`) }
+navigator.storage?.persist?.() // ask the browser not to evict the data
+
+function save() {
+  if (!loaded) return // never overwrite stored data we could not read
+  try { localStorage.setItem('cn', JSON.stringify(db)) } catch { alert('저장하지 못했습니다. 저장 공간이 부족합니다. 백업을 받은 뒤 오래된 음성 기록을 지워주세요.') }
+}
+let timer
+const saveSoon = () => { clearTimeout(timer); timer = setTimeout(save, 300) } // typing: don't serialize everything per keystroke
+addEventListener('pagehide', () => { clearTimeout(timer); save() })
+
+const group = () => db.groups.find((g) => g.id === db.current)
+const oldestFirst = (g) => [...g.sessions].sort((a, b) => a.date.localeCompare(b.date))
+const partNames = (g) => [...new Set(g.sessions.flatMap((s) => s.parts.map((p) => p.name)))]
+const picked = (g) => g.pick ?? partNames(g).slice(0, 1) // default: the summary only
+// what the prep note is built from: the chosen parts of the most recent conversations
+const sourceText = (g) => prepNotes(g.name, oldestFirst(g).slice(-Math.max(1, +$('recent').value || 1)), picked(g))
+const updateCount = () => {
+  const n = $('prep').value.length
+  $('count').textContent = `${n.toLocaleString()} / ${LIMIT.toLocaleString()}자${n > LIMIT ? ' (한도 초과: Conversate에 다 들어가지 않습니다)' : ''}`
+  $('count').classList.toggle('danger', n > LIMIT)
+}
+const setPrep = (g, text) => { g.prep = text; save(); render() }
+
+const open = new Set() // sessions expanded on screen, kept across re-renders
+
+function sessionEl(s) {
+  const label = () => `${s.date} · ${s.title}`
+  const summary = el('summary', {}, label())
+  const d = el('details', { open: open.has(s.id), ontoggle: () => (d.open ? open.add(s.id) : open.delete(s.id)) }, summary,
+    el('label', {}, '제목', el('input', { type: 'text', value: s.title, oninput: (e) => { s.title = e.target.value; summary.textContent = label(); saveSoon() } })),
+    el('label', {}, '날짜', el('input', { type: 'date', value: s.date, onchange: (e) => { if (e.target.value) { s.date = e.target.value; save(); render() } } })),
+    ...s.parts.map((p) => el('label', {}, p.name, el('textarea', {
+      value: p.text, rows: Math.min(20, p.text.split('\n').length + 1), // fallback height where field-sizing is unsupported
+      oninput: (e) => { p.text = e.target.value; saveSoon() },
+    }))),
+    el('div', { className: 'row' }, el('button', { className: 'danger', textContent: '이 대화 삭제', onclick: () => {
+      if (!confirm(`"${s.title}" 대화를 삭제할까요? 되돌릴 수 없습니다.`)) return
+      const g = group()
+      g.sessions = g.sessions.filter((x) => x !== s)
+      save(); render(); say('대화를 삭제했습니다.')
+    } })),
+  )
+  return d
+}
+
+function render() {
+  if (!db.groups.length) db.groups.push({ id: uid(), name: '기본 그룹', sessions: [] })
+  if (!group()) db.current = db.groups[0].id
+  const g = group()
+  $('group').replaceChildren(...db.groups.map((x) => new Option(`${x.name} (${x.sessions.length})`, x.id, false, x === g)))
+  $('sessions').replaceChildren(...(g.sessions.length
+    ? oldestFirst(g).reverse().map(sessionEl)
+    : [el('p', { className: 'muted', textContent: '아직 대화가 없습니다. 위에서 파일을 추가하세요.' })]))
+  $('partNames').replaceChildren(...partNames(g).map((n) => el('label', {}, el('input', {
+    type: 'checkbox', checked: picked(g).includes(n),
+    onchange: (e) => { g.pick = e.target.checked ? [...picked(g), n] : picked(g).filter((x) => x !== n); save() },
+  }), ` ${n}`)))
+  $('prep').value = g.prep ?? ''
+  updateCount()
+}
+
+function add(text) {
+  if (!text.trim()) return
+  const g = group()
+  const s = { id: uid(), ...parseExport(text) }
+  if (g.sessions.some((x) => x.title === s.title && x.date === s.date) && !confirm(`"${s.title}" (${s.date}) 대화가 이미 있습니다. 그래도 추가할까요?`)) return
+  g.sessions.push(s)
+  save(); render(); say(`"${s.title}" 대화를 "${g.name}"에 추가했습니다.`)
+}
+
+$('group').onchange = (e) => { db.current = e.target.value; save(); render() }
+$('newGroup').onclick = () => {
+  const name = prompt('새 그룹 이름')?.trim()
+  if (!name) return
+  db.groups.push({ id: db.current = uid(), name, sessions: [] })
+  save(); render()
+}
+$('renameGroup').onclick = () => {
+  const name = prompt('그룹 이름', group().name)?.trim()
+  if (!name) return
+  group().name = name
+  save(); render()
+}
+$('delGroup').onclick = () => {
+  const g = group()
+  if (!confirm(`"${g.name}" 그룹과 대화 ${g.sessions.length}개를 삭제할까요? 되돌릴 수 없습니다.`)) return
+  db.groups = db.groups.filter((x) => x !== g)
+  save(); render(); say('그룹을 삭제했습니다.')
+}
+
+$('files').onchange = async (e) => {
+  for (const f of e.target.files) add(await f.text())
+  e.target.value = '' // so picking the same file again fires change
+}
+$('addPaste').onclick = () => { add($('paste').value); $('paste').value = '' }
+$('prep').oninput = (e) => { group().prep = e.target.value; saveSoon(); updateCount() }
+
+const KEY = 'cn-key' // stored apart from db so backup files never contain the API key
+try { $('key').value = localStorage.getItem(KEY) ?? '' } catch {}
+$('key').onchange = (e) => { try { localStorage.setItem(KEY, e.target.value.trim()) } catch {} }
+
+async function gemini(system, text) {
+  const key = $('key').value.trim()
+  if (!key) throw new Error('설정에 Gemini API 키를 넣어주세요')
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', {
+    method: 'POST',
+    signal: AbortSignal.timeout(60000),
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text }] }] }),
+  })
+  if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 200)}`)
+  const out = (await res.json()).candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('').trim()
+  if (!out) throw new Error('응답이 비어 있습니다')
+  return out
+}
+
+const canReplace = (g) => g.sessions.length ? !g.prep || confirm('지금 준비 메모를 새로 만든 내용으로 바꿀까요?') : (say('먼저 대화를 추가하세요.'), false)
+$('plain').onclick = () => { const g = group(); if (canReplace(g)) setPrep(g, sourceText(g)) }
+$('ai').onclick = async () => {
+  const g = group()
+  if (!canReplace(g)) return
+  $('ai').disabled = true
+  say('AI가 정리하는 중입니다…')
+  try {
+    let out = await gemini(condensePrompt(g.name, LIMIT - 500), sourceText(g))
+    if (out.length > LIMIT) out = await gemini(condensePrompt(g.name, LIMIT - 1500), out) // one retry: models overshoot character limits
+    setPrep(g, out)
+    say(out.length > LIMIT ? '아직 5,000자를 넘습니다. 직접 줄여주세요.' : `"${g.name}" 준비 메모를 만들었습니다.`)
+  } catch (e) { say(`AI 정리 실패: ${e.message}`) }
+  $('ai').disabled = false
+}
+
+const download = (text, name, type) => {
+  const a = el('a', { href: URL.createObjectURL(new Blob([text], { type })), download: name })
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+const prepText = () => $('prep').value || (say('준비 메모가 비어 있습니다. 먼저 만들어주세요.'), '')
+const prepFile = (text) => new File([text], `${group().name} 준비메모.txt`, { type: 'text/plain' })
+$('share').hidden = !navigator.canShare?.({ files: [new File([''], 'a.txt', { type: 'text/plain' })] })
+$('share').onclick = async () => {
+  const text = prepText()
+  if (!text) return
+  try { await navigator.share({ files: [prepFile(text)] }) } catch (e) { if (e.name !== 'AbortError') say(`공유하지 못했습니다: ${e.message}`) }
+}
+$('copy').onclick = async () => {
+  const text = prepText()
+  if (!text) return
+  try { await navigator.clipboard.writeText(text); say('준비 메모를 복사했습니다.') } catch (e) { say(`복사하지 못했습니다: ${e.message}`) }
+}
+$('download').onclick = () => { const text = prepText(); if (text) download(text, `${group().name} 준비메모.txt`, 'text/plain') }
+
+$('backup').onclick = () => download(JSON.stringify(db), `대화노트-백업-${new Date().toLocaleDateString('sv')}.json`, 'application/json')
+$('restoreBtn').onclick = () => $('restore').click()
+$('restore').onchange = async (e) => {
+  const f = e.target.files[0]
+  e.target.value = ''
+  if (!f) return
+  try {
+    const next = JSON.parse(await f.text())
+    if (!Array.isArray(next.groups) || !next.groups.every((g) => g.id && Array.isArray(g.sessions))) throw new Error('대화 노트 백업 파일이 아닙니다')
+    if (!confirm(`지금 기록을 백업 파일(그룹 ${next.groups.length}개)로 바꿀까요? 지금 기록은 사라집니다.`)) return
+    db = next
+    loaded = true
+    save(); render(); say('백업을 불러왔습니다.')
+  } catch (err) { say(`백업을 불러오지 못했습니다: ${err.message}`) }
+}
+
+render()
+// Install card: hidden once the app runs from the home screen.
+if (!matchMedia('(display-mode: standalone)').matches && !navigator.standalone) {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent)
+  // iOS has no install prompt API, so it gets instructions; elsewhere the card appears only when the browser offers installation
+  if (ios) { $('installHint').textContent = '사파리 아래의 공유 버튼을 누른 뒤 "홈 화면에 추가"를 고르면 앱처럼 쓸 수 있습니다.'; $('installCard').hidden = false }
+  addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault()
+    $('installHint').textContent = '홈 화면에 설치하면 인터넷 없이도 열립니다.'
+    $('install').hidden = $('installCard').hidden = false
+    $('install').onclick = async () => { e.prompt(); await e.userChoice; $('installCard').hidden = true }
+  })
+  addEventListener('appinstalled', () => { $('installCard').hidden = true })
+}
+// offline use; only registers on https or localhost
+navigator.serviceWorker?.register('sw.js').catch((e) => console.warn('offline cache unavailable', e))
+</script>
+</body>
+</html>

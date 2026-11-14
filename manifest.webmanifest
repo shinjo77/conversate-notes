@@ -1,0 +1,32 @@
+{
+  "id": "conversate-notes",
+  "name": "대화 노트",
+  "short_name": "대화 노트",
+  "description": "Conversate에서 내보낸 대화를 그룹별로 모으고 고쳐서 준비 메모로 만듭니다.",
+  "lang": "ko",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#14532d",
+  "theme_color": "#14532d",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
